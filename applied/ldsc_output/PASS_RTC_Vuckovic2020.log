@@ -1,0 +1,32 @@
+*********************************************************************
+* LD Score Regression (LDSC)
+* Version 1.0.1
+* (C) 2014-2019 Brendan Bulik-Sullivan and Hilary Finucane
+* Broad Institute of MIT and Harvard / MIT Department of Mathematics
+* GNU General Public License v3
+*********************************************************************
+Call: 
+./ldsc.py \
+--h2 sumstats/PASS_RTC_Vuckovic2020.sumstats.gz \
+--ref-ld-chr eur_w_ld_chr_ben/ \
+--out output_ben/PASS_RTC_Vuckovic2020 \
+--w-ld-chr eur_w_ld_chr_ben/ 
+
+Beginning analysis at Mon Dec 15 00:10:37 2025
+Reading summary statistics from sumstats/PASS_RTC_Vuckovic2020.sumstats.gz ...
+Read summary statistics for 1201382 SNPs.
+Reading reference panel LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read reference panel LD Scores for 1290028 SNPs.
+Removing partitioned LD Scores with zero variance.
+Reading regression weight LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read regression weight LD Scores for 1290028 SNPs.
+After merging with reference panel LD, 1174427 SNPs remain.
+After merging with regression SNP LD, 1174427 SNPs remain.
+Using two-step estimator with cutoff at 30.
+Total Observed scale h2: 0.149 (0.0116)
+Lambda GC: 1.6946
+Mean Chi^2: 3.101
+Intercept: 1.2743 (0.0262)
+Ratio: 0.1306 (0.0125)
+Analysis finished at Mon Dec 15 00:10:43 2025
+Total time elapsed: 6.25s

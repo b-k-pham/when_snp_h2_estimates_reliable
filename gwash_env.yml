@@ -1,0 +1,17 @@
+name: gwash
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - jupyterlab
+  - pandas
+  - scipy
+  - tqdm
+  - scikit-learn
+  - plotnine
+  - numba
+  - conda-forge::pandas-plink
+  - anaconda::natsort
+  - conda-forge::openpyxl
+  - anaconda::seaborn
+prefix: C:\Users\bpham\.conda\envs\gwash

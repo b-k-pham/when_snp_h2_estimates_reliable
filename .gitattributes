@@ -1,0 +1,4 @@
+save_data/appendix/ldscores_chi2_100sim_data/* filter=lfs diff=lfs merge=lfs -text
+save_data/appendix/ldscores_chi2_100sim_data/ filter=lfs diff=lfs merge=lfs -text
+save_data/appendix/ldscores_chi2_100sim_data/AR1/*.pkl filter=lfs diff=lfs merge=lfs -text
+save_data/appendix/ldscores_chi2_100sim_data/realistic/*.pkl filter=lfs diff=lfs merge=lfs -text

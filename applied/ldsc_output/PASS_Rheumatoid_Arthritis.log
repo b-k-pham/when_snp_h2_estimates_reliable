@@ -1,0 +1,32 @@
+*********************************************************************
+* LD Score Regression (LDSC)
+* Version 1.0.1
+* (C) 2014-2019 Brendan Bulik-Sullivan and Hilary Finucane
+* Broad Institute of MIT and Harvard / MIT Department of Mathematics
+* GNU General Public License v3
+*********************************************************************
+Call: 
+./ldsc.py \
+--h2 sumstats/PASS_Rheumatoid_Arthritis.sumstats.gz \
+--ref-ld-chr eur_w_ld_chr_ben/ \
+--out output_ben/PASS_Rheumatoid_Arthritis \
+--w-ld-chr eur_w_ld_chr_ben/ 
+
+Beginning analysis at Mon Dec 15 00:10:30 2025
+Reading summary statistics from sumstats/PASS_Rheumatoid_Arthritis.sumstats.gz ...
+Read summary statistics for 1125155 SNPs.
+Reading reference panel LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read reference panel LD Scores for 1290028 SNPs.
+Removing partitioned LD Scores with zero variance.
+Reading regression weight LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read regression weight LD Scores for 1290028 SNPs.
+After merging with reference panel LD, 1119409 SNPs remain.
+After merging with regression SNP LD, 1119409 SNPs remain.
+Using two-step estimator with cutoff at 30.
+Total Observed scale h2: 0.1695 (0.023)
+Lambda GC: 1.105
+Mean Chi^2: 1.1584
+Intercept: 1.0258 (0.0091)
+Ratio: 0.1627 (0.0575)
+Analysis finished at Mon Dec 15 00:10:37 2025
+Total time elapsed: 6.55s

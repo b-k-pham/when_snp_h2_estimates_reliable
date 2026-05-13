@@ -1,0 +1,32 @@
+*********************************************************************
+* LD Score Regression (LDSC)
+* Version 1.0.1
+* (C) 2014-2019 Brendan Bulik-Sullivan and Hilary Finucane
+* Broad Institute of MIT and Harvard / MIT Department of Mathematics
+* GNU General Public License v3
+*********************************************************************
+Call: 
+./ldsc.py \
+--h2 sumstats/PASS_Insomnia_Jansen2019.sumstats.gz \
+--ref-ld-chr eur_w_ld_chr_ben/ \
+--out output_ben/PASS_Insomnia_Jansen2019 \
+--w-ld-chr eur_w_ld_chr_ben/ 
+
+Beginning analysis at Mon Dec 15 00:08:31 2025
+Reading summary statistics from sumstats/PASS_Insomnia_Jansen2019.sumstats.gz ...
+Read summary statistics for 1117678 SNPs.
+Reading reference panel LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read reference panel LD Scores for 1290028 SNPs.
+Removing partitioned LD Scores with zero variance.
+Reading regression weight LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read regression weight LD Scores for 1290028 SNPs.
+After merging with reference panel LD, 1103875 SNPs remain.
+After merging with regression SNP LD, 1103875 SNPs remain.
+Using two-step estimator with cutoff at 30.
+Total Observed scale h2: 0.0456 (0.0019)
+Lambda GC: 1.3061
+Mean Chi^2: 1.3617
+Intercept: 1.0141 (0.0078)
+Ratio: 0.039 (0.0216)
+Analysis finished at Mon Dec 15 00:08:37 2025
+Total time elapsed: 5.76s

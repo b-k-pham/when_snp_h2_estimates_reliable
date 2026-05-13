@@ -1,0 +1,32 @@
+*********************************************************************
+* LD Score Regression (LDSC)
+* Version 1.0.1
+* (C) 2014-2019 Brendan Bulik-Sullivan and Hilary Finucane
+* Broad Institute of MIT and Harvard / MIT Department of Mathematics
+* GNU General Public License v3
+*********************************************************************
+Call: 
+./ldsc.py \
+--h2 sumstats/PASS_AnorexiaNervosa_Watson2019.sumstats.gz \
+--ref-ld-chr eur_w_ld_chr_ben/ \
+--out output_ben/PASS_AnorexiaNervosa_Watson2019 \
+--w-ld-chr eur_w_ld_chr_ben/ 
+
+Beginning analysis at Mon Dec 15 00:06:27 2025
+Reading summary statistics from sumstats/PASS_AnorexiaNervosa_Watson2019.sumstats.gz ...
+Read summary statistics for 916408 SNPs.
+Reading reference panel LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read reference panel LD Scores for 1290028 SNPs.
+Removing partitioned LD Scores with zero variance.
+Reading regression weight LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read regression weight LD Scores for 1290028 SNPs.
+After merging with reference panel LD, 912848 SNPs remain.
+After merging with regression SNP LD, 912848 SNPs remain.
+Using two-step estimator with cutoff at 30.
+Total Observed scale h2: 0.1791 (0.0114)
+Lambda GC: 1.2597
+Mean Chi^2: 1.3057
+Intercept: 1.0257 (0.0105)
+Ratio: 0.0842 (0.0344)
+Analysis finished at Mon Dec 15 00:06:32 2025
+Total time elapsed: 5.47s

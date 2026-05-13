@@ -1,0 +1,32 @@
+*********************************************************************
+* LD Score Regression (LDSC)
+* Version 1.0.1
+* (C) 2014-2019 Brendan Bulik-Sullivan and Hilary Finucane
+* Broad Institute of MIT and Harvard / MIT Department of Mathematics
+* GNU General Public License v3
+*********************************************************************
+Call: 
+./ldsc.py \
+--h2 sumstats/PASS_HipOA_Tachmazidou2019.sumstats.gz \
+--ref-ld-chr eur_w_ld_chr_ben/ \
+--out output_ben/PASS_HipOA_Tachmazidou2019 \
+--w-ld-chr eur_w_ld_chr_ben/ 
+
+Beginning analysis at Mon Dec 15 00:08:20 2025
+Reading summary statistics from sumstats/PASS_HipOA_Tachmazidou2019.sumstats.gz ...
+Read summary statistics for 593330 SNPs.
+Reading reference panel LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read reference panel LD Scores for 1290028 SNPs.
+Removing partitioned LD Scores with zero variance.
+Reading regression weight LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read regression weight LD Scores for 1290028 SNPs.
+After merging with reference panel LD, 585459 SNPs remain.
+After merging with regression SNP LD, 585459 SNPs remain.
+Using two-step estimator with cutoff at 30.
+Total Observed scale h2: 0.0332 (0.0023)
+Lambda GC: 1.1715
+Mean Chi^2: 1.2333
+Intercept: 0.9735 (0.0092)
+Ratio < 0 (usually indicates GC correction).
+Analysis finished at Mon Dec 15 00:08:25 2025
+Total time elapsed: 4.73s

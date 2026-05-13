@@ -1,0 +1,32 @@
+*********************************************************************
+* LD Score Regression (LDSC)
+* Version 1.0.1
+* (C) 2014-2019 Brendan Bulik-Sullivan and Hilary Finucane
+* Broad Institute of MIT and Harvard / MIT Department of Mathematics
+* GNU General Public License v3
+*********************************************************************
+Call: 
+./ldsc.py \
+--h2 sumstats/PASS_Schizophrenia_Pardinas2018.sumstats.gz \
+--ref-ld-chr eur_w_ld_chr_ben/ \
+--out output_ben/PASS_Schizophrenia_Pardinas2018 \
+--w-ld-chr eur_w_ld_chr_ben/ 
+
+Beginning analysis at Mon Dec 15 00:10:50 2025
+Reading summary statistics from sumstats/PASS_Schizophrenia_Pardinas2018.sumstats.gz ...
+Read summary statistics for 984069 SNPs.
+Reading reference panel LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read reference panel LD Scores for 1290028 SNPs.
+Removing partitioned LD Scores with zero variance.
+Reading regression weight LD Score from eur_w_ld_chr_ben/[1-22] ... (ldscore_fromlist)
+Read regression weight LD Scores for 1290028 SNPs.
+After merging with reference panel LD, 982056 SNPs remain.
+After merging with regression SNP LD, 982056 SNPs remain.
+Using two-step estimator with cutoff at 30.
+Total Observed scale h2: 0.4485 (0.0155)
+Lambda GC: 1.744
+Mean Chi^2: 2.005
+Intercept: 1.087 (0.0146)
+Ratio: 0.0866 (0.0145)
+Analysis finished at Mon Dec 15 00:10:55 2025
+Total time elapsed: 5.51s
