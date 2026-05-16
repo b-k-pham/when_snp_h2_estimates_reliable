@@ -3,7 +3,7 @@
 
 ## Description
 
-This repository contains simulation results and code from "When can Whole-Genome SNP-heritability be reliably estimated from summary statistics?". The preprint can be read here [link].
+This repository contains simulation results and code from "When can Whole-Genome SNP-heritability be reliably estimated from summary statistics?". The preprint can be read here [https://www.biorxiv.org/content/10.64898/2026.05.13.724972v1].
 
 
 ## Getting Started
