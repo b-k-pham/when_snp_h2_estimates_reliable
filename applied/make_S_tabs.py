@@ -124,7 +124,7 @@ for chrom_num in tqdm(range(1,23)):
     mks = loaded['mks']
     S_new2 = S_new @ S_new
     l2s = (S_new2.diagonal() - (mks)/(n-1)) * ((n-1)/(n-2))
-    l3s = (S_new2 @ S_new).diagonal() - 3*(mks)/(n-1) - (mks**2)/(n-1)**2) * ((n-1)/(n-2))
+    l3s = ((S_new2 @ S_new).diagonal() - 3*(mks)/(n-1) - (mks**2)/(n-1)**2) * ((n-1)/(n-2))
 
 
     bim_copy['gwash_l2s'] = l2s
