@@ -58,7 +58,11 @@ from src.methods.gcta_numba_helpers import (
     make_AI_matrix_numba,
     make_deriv_matrix_numba,
     loglik_numba,
-    parse_my_gcta_numba
+    parse_my_gcta_numba,
+    make_mat_vec_prods,
+    make_AI_matrix_prec,
+    make_deriv_matrix_prec,
+    loglik_prec
 )
 
 
@@ -97,7 +101,7 @@ logging.basicConfig(level=logging.INFO)
 
 class do_analysis:
     def __init__(self,data_gen,X_tilde,u2,s2,ldscores,ldsc_reg_weights,
-                 intercept = None,return_step1_only = False,calc_mu_hat_2_fast = True,calc_mu_hat_3 = True,time_it = True):
+                 intercept = None,return_step1_only = False,calc_mu_hat_2_fast = True,calc_mu_hat_3 = True,time_it = True,do_fast_GCTA = True):
         
         self.data_gen = data_gen
         self.u2 = u2
@@ -112,6 +116,8 @@ class do_analysis:
         self.time_it = time_it
         
         self.return_step1_only = return_step1_only
+        
+        self.do_fast_GCTA = do_fast_GCTA
         
         
     def do_ldsc(self):
@@ -215,6 +221,7 @@ class do_analysis:
         # y is input phenotype
         # kinship is input GRM.
         # GRM_id has fids and iids
+        use_fast = self.do_fast_GCTA
         
         def format_mats_to_gcta(GRM_mat, pheno_array,GRM_id,m):
             # for now, it is hard coded that there is m nonmissing SNPs (all SNPs are present)
@@ -343,6 +350,88 @@ class do_analysis:
             res_dict['time_elapsed'] = end-start
             return res_dict
             
+        def do_py_GCTA_fast(y, kinship, tol=1e-4, iter_limit=100):
+            start = time.perf_counter()
+            n = y.shape[0]
+            y = y.astype(np.float64)
+            I_n = np.eye(n, dtype=np.float64)
+            kinship = kinship.astype(np.float64)
+
+            # eigendecompose kinship once — Q and eigenvalues reused every iteration
+            eigenvalues, Q = np.linalg.eigh(kinship)
+            ones = np.ones((n, 1), dtype=np.float64)
+
+            def make_P_from_eigen(sigma2_g, sigma2_e):
+                d = sigma2_g * eigenvalues + sigma2_e   # O(n)
+                V_inv = (Q / d) @ Q.T                   # O(n²)
+                V_inv_1 = V_inv @ ones
+                denom = (ones.T @ V_inv_1).item()
+                P = V_inv - (V_inv_1 @ V_inv_1.T) / denom
+                return P, d, V_inv_1, denom
+
+            def loglik_from_eigen(d, V_inv_1, denom, P, y):
+                log_det_V = np.sum(np.log(d))           # O(n)
+                log_det_XVX = np.log(denom)
+                yPy = (y.T @ P @ y).item()
+                return -0.5 * (log_det_V + log_det_XVX + yPy)
+
+            y_temp = y - np.mean(y)
+            y_temp_SSq = ((y_temp ** 2).sum()) / (n - 1)
+            sigma2_g, sigma2_e = y_temp_SSq / 2, y_temp_SSq / 2
+
+            P, d, V_inv_1, denom = make_P_from_eigen(sigma2_g, sigma2_e)
+            LL0 = loglik_from_eigen(d, V_inv_1, denom, P, y)
+
+            # initial EM step (unchanged)
+            rhs_g = sigma2_g * n - sigma2_g ** 2 * np.sum(P * kinship)
+            sigma2_g = ((sigma2_g ** 2 * y.T @ P @ kinship @ P @ y + rhs_g) / n).item()
+            rhs_e = np.trace(sigma2_e * I_n - sigma2_e ** 2 * P)
+            sigma2_e = ((sigma2_e ** 2 * y.T @ P @ P @ y + rhs_e) / n).item()
+
+            stop = False
+            params = np.array([sigma2_g, sigma2_e], dtype=np.float64).reshape(-1, 1)
+            counter = 0
+
+            while not stop:
+                sigma2_g = params[0, 0]
+                sigma2_e = params[1, 0]
+                if sigma2_g < 0:
+                    sigma2_g = y_temp_SSq * (10 ** -6)
+                if sigma2_e < 0:
+                    sigma2_e = y_temp_SSq * (10 ** -6)
+                params[0, 0] = sigma2_g
+                params[1, 0] = sigma2_e
+
+                P, d, V_inv_1, denom = make_P_from_eigen(sigma2_g, sigma2_e)
+                LL = loglik_from_eigen(d, V_inv_1, denom, P, y)
+
+                if abs(LL - LL0) < tol:
+                    stop = True
+                else:
+                    LL0 = LL
+                    Py,APy,PAPy,PPy,APAPy = make_mat_vec_prods(y,P,kinship)
+                    #AI_mat = make_AI_matrix_numba(y, P, kinship)
+                    AI_mat = make_AI_matrix_prec(Py,APy,PAPy,PPy,APAPy)
+                    #deriv_mat = make_deriv_matrix_numba(y, P, kinship)
+                    deriv_mat = make_deriv_matrix_prec(P,kinship, Py,APy)
+                    params = params + (compute_A_inv_w_solve(AI_mat) @ deriv_mat)
+                    counter += 1
+                if counter > iter_limit:
+                    logging.info('GCTA exceeded iteration limit')
+                    stop = True
+
+            VG, Ve = parse_my_gcta_numba(params)
+            VP = VG + Ve
+            h2_est = VG / VP
+            res_dict = dict()
+            end = time.perf_counter()
+            res_dict['VG'] = VG
+            res_dict['Ve'] = Ve
+            res_dict['h2_est'] = h2_est
+            res_dict['num_iters'] = counter
+            res_dict['time_elapsed'] = end - start
+            return res_dict
+            
         if use_native_gcta:
             # write input phenotype, input GRM, and GRM_id as temp files.
             native_GRM_input,native_pheno_input = format_mats_to_gcta(kinship, y,GRM_id,self.data_gen.m)
@@ -383,8 +472,10 @@ class do_analysis:
                 
             
         else:
-            res = do_py_GCTA(y, kinship, tol=tol, iter_limit=iter_limit)
-            
+            if use_fast:
+                res = do_py_GCTA_fast(y, kinship, tol=tol, iter_limit=iter_limit)
+            else:
+                res = do_py_GCTA(y, kinship, tol=tol, iter_limit=iter_limit)
         return res
     
     

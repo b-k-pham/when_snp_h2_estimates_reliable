@@ -178,7 +178,10 @@ class visualize:
             sd_df = sd_df.reset_index(drop = True)
             sd_df.columns = ['sd','type']
             
-            quantile_df = temp.quantile([0.05,0.95]).T
+            #quantile_df = temp.quantile([0.05,0.95]).T
+            #quantile_df = temp.quantile([0.025,0.975]).T # 95% quantile error bar.
+            alpha_level = (1-self.CI_level)/2
+            quantile_df = temp.quantile([alpha_level,self.CI_level + alpha_level]).T
             quantile_df['type'] = quantile_df.index
             quantile_df = quantile_df.reset_index(drop = True)
             quantile_df.columns = ['quantile_lower','quantile_upper','type']
@@ -484,10 +487,14 @@ class visualize:
         return p + mytheme
         
     def make_plot_seplot_prop(self):
-        def make_plot_ready_se_prop_long_df(res_dict_raw,log = True,mode = None):
+        def make_plot_ready_se_prop_long_df(res_dict_raw,CI_level,log = True,mode = None):
+            alpha_level = (1-CI_level)/2
             sim_std_dict = dict() # empirical std dataframe (this is the true value that the standard error estimates should go to)
             se_mean_dict = dict() # average SE dataframe
             se_quantile_dict = dict()
+            se_CI_dict = dict()
+            zstat = scipy.stats.norm.ppf(1 - (alpha_level))
+            #CI_pm = est_sd_df['sd'] * zstat/np.sqrt(num_sims)
             for k in res_dict_raw.keys():
                 # ensure that x entries have same number of sig figs
                 k2 = np.format_float_positional(np.float64(k),min_digits = 2)
@@ -496,8 +503,12 @@ class visualize:
                 se_prop_df = pd.concat([pd.DataFrame(res_dict_raw[k][['h2_gwash_sample_theoretical_se','h2_ldsc_reg_jackknife_se','h2_ldsc_fixed_jackknife_se']].iloc[:,q]/res_dict_raw[k][['h2_gwash','h2_ldsc_reg','h2_ldsc_fixed']].std(ddof = 1,axis = 0).iloc[q]) for q in range(3)],axis = 1)
                 if log:
                     se_prop_df = np.log10(se_prop_df) #base10 is interpretable, exponential not so much
+                num_sims = res_dict_raw[k].shape[0]
                 se_mean_dict[k2] = se_prop_df.mean(axis = 0)
-                se_quantile_dict[k2] = se_prop_df.quantile([0.05,0.95])
+                se_quantile_dict[k2] = se_prop_df.quantile([alpha_level,CI_level + alpha_level])
+                CI_upper = se_prop_df.mean(axis = 0) + (zstat * (se_prop_df.std(axis = 0,ddof = 1))/np.sqrt(num_sims))
+                CI_lower = se_prop_df.mean(axis = 0) - (zstat * (se_prop_df.std(axis = 0,ddof = 1))/np.sqrt(num_sims))
+                se_CI_dict[k2] = pd.DataFrame({'CI_lower':CI_lower,'CI_upper':CI_upper}).T
             se_quantile_long = []
             for k in se_quantile_dict.keys():
                 se_quantile_df = se_quantile_dict[k]
@@ -511,10 +522,27 @@ class visualize:
                     temp = temp.reset_index(drop = True)
                     temp['param'] = k
                     se_quantile_long.append(temp)
+                    
             se_quantile_long = pd.concat(se_quantile_long,axis = 0).reset_index(drop = True)
             se_quantile_long['type'] = se_quantile_long['type'].replace('h2_gwash','GWASH').replace('h2_ldsc_fixed','LDSC Fixed Intercept').replace('h2_ldsc_reg','LDSC Free Intercept').replace('h2_ldsc_reg','LDSC Free Intercept')
             
-            return se_quantile_long
+            se_CI_long = []
+            for k in se_CI_dict.keys():
+                se_CI_df = se_CI_dict[k]
+                for col in se_CI_df.columns:
+                    label = col.replace('_sample_theoretical_se','').replace('_jackknife_se','')
+                    temp = se_CI_df[[col]]
+                    temp.columns = ['se_CI']
+                    temp = temp.T
+                    temp['type'] = label
+                    #temp.columns = ['CI_lower','CI_upper','type']
+                    temp = temp.reset_index(drop = True)
+                    temp['param'] = k
+                    se_CI_long.append(temp)
+            
+            se_CI_long = pd.concat(se_CI_long,axis = 0).reset_index(drop = True)
+            se_CI_long['type'] = se_CI_long['type'].replace('h2_gwash','GWASH').replace('h2_ldsc_fixed','LDSC Fixed Intercept').replace('h2_ldsc_reg','LDSC Free Intercept').replace('h2_ldsc_reg','LDSC Free Intercept')
+            return pd.merge(se_quantile_long,se_CI_long)
             
         mytheme = theme(plot_title=element_text(size=20),
                 axis_title=element_text(size=27),
@@ -522,14 +550,17 @@ class visualize:
                 legend_text=element_text(size=20),
                 figure_size=(8, 7),
                 legend_position=self.legend_position)
-        se_quantile_long_df = make_plot_ready_se_prop_long_df(self.res_dict_raw_w_se,mode = 'all')
+        se_quantile_long_df = make_plot_ready_se_prop_long_df(self.res_dict_raw_w_se,self.CI_level,mode = 'all')
         buffer = 0.5
         lim_num = np.max([abs(z) for z in se_quantile_long_df['quantile_lower'].tolist()] + [z for z in se_quantile_long_df['quantile_upper'].tolist()]).item() + buffer
         param = self.xparam
         breaks_legend = ['GWASH','LDSC Fixed Intercept','LDSC Free Intercept'] #ordered h2s
         color_legend = ["green",'#FB93C4','red'] #color corresponding to order
         color_obj = scale_color_manual(color_legend,breaks = breaks_legend)
-        p = ggplot(se_quantile_long_df,aes(x  = 'param',color = 'type')) + geom_errorbar(aes(ymin = 'quantile_lower', ymax = 'quantile_upper'),size = 2.5,position = position_dodge(width = 1)) + geom_hline(yintercept = 0,linetype = 'dashed',size = 1,color = 'blue') + xlab(param) +  ylab(r'$\log_{10}\left(\frac{\hat{\mathrm{se}}}{\mathrm{se}_{\mathrm{MC}}}\right)$') + color_obj #+ coord_flip(ylim=[-lim_num,lim_num])
+        if self.CI_mode == 'CI':
+            p = ggplot(se_quantile_long_df,aes(x  = 'param',color = 'type')) + geom_errorbar(aes(ymin = 'CI_lower', ymax = 'CI_upper'),size = 2.5,position = position_dodge(width = 1)) + geom_hline(yintercept = 0,linetype = 'dashed',size = 1,color = 'blue') + xlab(param) +  ylab(r'$\log_{10}\left(\frac{\hat{\mathrm{se}}}{\mathrm{se}_{\mathrm{MC}}}\right)$') + color_obj #+ coord_flip(ylim=[-lim_num,lim_num])
+        else:
+            p = ggplot(se_quantile_long_df,aes(x  = 'param',color = 'type')) + geom_errorbar(aes(ymin = 'quantile_lower', ymax = 'quantile_upper'),size = 2.5,position = position_dodge(width = 1)) + geom_hline(yintercept = 0,linetype = 'dashed',size = 1,color = 'blue') + xlab(param) +  ylab(r'$\log_{10}\left(\frac{\hat{\mathrm{se}}}{\mathrm{se}_{\mathrm{MC}}}\right)$') + color_obj #+ coord_flip(ylim=[-lim_num,lim_num])
         return p + mytheme
         
     def plot_studies_passed(self):

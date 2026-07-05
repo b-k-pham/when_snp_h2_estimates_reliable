@@ -56,3 +56,51 @@ def parse_my_gcta_numba(params):
     VG = params[0, 0]
     Ve = params[1, 0]
     return VG, Ve 
+    
+
+
+### HELPER FUNCTIONS FOR FASTER IMPLEMENTATION OF PYTHON GCTA
+@njit(cache=True)
+def make_mat_vec_prods(y,P,A):
+    Py = P @ y
+    APy = A @ Py
+    PAPy = P @ APy
+    PPy = P @ Py
+    APAPy = A @ PAPy
+    return Py,APy,PAPy,PPy,APAPy
+
+
+
+@njit(cache=True)
+def make_AI_matrix_prec(Py,APy,PAPy,PPy,APAPy):
+    #tl = (y.T @ P @ A @ P @ A @ P @ y).item()
+    tl = np.dot(Py.T,APAPy).item()
+    #tr = (y.T @ P @ A @ P @ P @ y).item()
+    tr = np.dot(APy.T,PPy).item()
+    #bl = (y.T @ P @ P @ A @ P @ y).item()
+    bl = np.dot(PAPy.T,Py).item()
+    #br = (y.T @ P @ P @ P @ y).item()
+    br = np.dot(Py.T,PPy).item()
+    return 0.5 * np.array([[tl, tr], [bl, br]], dtype=np.float64)
+
+
+@njit(cache=True)
+def make_deriv_matrix_prec(P,A, Py,APy):
+    #top = (np.sum(P * A) - (y.T @ PAPy)).item()
+    top = (np.sum(P * A) - np.dot(Py.T,APy)).item()
+    #bot = (np.trace(P) - (y.T @ PPy)).item()
+    bot = (np.trace(P) - np.dot(Py.T,Py)).item()
+    return -0.5 * np.array([[top], [bot]], dtype=np.float64)
+
+@njit(cache=True)
+def loglik_prec(V, X, y,Py):
+    n = V.shape[0]
+    V_inv = compute_A_inv_w_solve(V)
+    if X is None:
+        X = np.ones((n, 1), dtype=np.float64)
+    middle = do_slogdet_cholesky(X.T @ V_inv @ X)
+    left = do_slogdet_cholesky(V)
+    P = calc_P_numba(V, X)
+    #right = y.T @ P @ y
+    right = np.dot(Py,y)
+    return (-0.5 * (left + middle + right)).item()
