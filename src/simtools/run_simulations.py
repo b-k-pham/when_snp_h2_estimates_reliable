@@ -66,6 +66,8 @@ from src.methods.gcta_numba_helpers import (
 
 
 from joblib import Parallel, delayed
+from threadpoolctl import threadpool_limits
+
 from collections import defaultdict
 
 from numba import njit,jit
@@ -103,7 +105,7 @@ from src.simtools.do_analysis import do_analysis
 
 
 class run_simulations:
-    def __init__(self,data_gen,ref_data_gen = None,scaleX = True,scaley = True,nPCs = None,num_sims = 100,regress_PC_out = False,regress_X_on_PC = True,regress_y_on_PC = True,calc_mu_hat_2_fast = True,multithreading = True,n_jobs = 20,realistic = False,run_gcta = True,reml_max_iters = 100,reml_tol = 1e-4,use_native_gcta = False,native_gcta_path = None,seed = None,debug = False,track_progress = False,batch_size = 1):
+    def __init__(self,data_gen,ref_data_gen = None,scaleX = True,scaley = True,nPCs = None,num_sims = 100,regress_PC_out = False,regress_X_on_PC = True,regress_y_on_PC = True,calc_mu_hat_2_fast = True,multithreading = True,n_jobs = 20,realistic = False,run_gcta = True,reml_max_iters = 100,reml_tol = 1e-4,use_native_gcta = False,native_gcta_path = None,seed = None,debug = False,track_progress = False,batch_size = 1,num_blocks = 200):
         self.data_gen = data_gen
         if ref_data_gen is None: #if there is no reference panel, assume that it is the same.
             self.ref_data_gen = self.data_gen
@@ -123,6 +125,9 @@ class run_simulations:
         self.n_jobs = n_jobs
         self.realistic = realistic
         self.batch_size = batch_size
+
+        # LDSC related
+        self.num_blocks = num_blocks # how many number of blocks for LDSC jackknife?
         
         # GCTA related
         self.run_gcta =  run_gcta # Run GCTA? This only matters for generating publication simulations.
@@ -226,8 +231,8 @@ class run_simulations:
         end = time.perf_counter()
         logging.info('time to generate data: {time}'.format(time = str(end - start)))
         
-        sims = do_analysis(self.data_gen,X_tilde,u2,s2,ldscores,ldsc_reg_weights,calc_mu_hat_2_fast = self.calc_mu_hat_2_fast)
-        sims_fixed = do_analysis(self.data_gen,X_tilde,u2,s2,ldscores,ldsc_reg_weights,intercept = 1,calc_mu_hat_2_fast = self.calc_mu_hat_2_fast)
+        sims = do_analysis(self.data_gen,X_tilde,u2,s2,ldscores,ldsc_reg_weights,calc_mu_hat_2_fast = self.calc_mu_hat_2_fast,num_blocks = self.num_blocks)
+        sims_fixed = do_analysis(self.data_gen,X_tilde,u2,s2,ldscores,ldsc_reg_weights,intercept = 1,calc_mu_hat_2_fast = self.calc_mu_hat_2_fast,num_blocks = self.num_blocks)
         
         start = time.perf_counter()
         
@@ -407,6 +412,7 @@ class run_simulations:
         y = self.data_gen.gen_y(X,b)
         
         
+        
         my_data_preprocessing = data_preprocessing(self.data_gen,nPCs = self.nPCs,regress_X_on_PC = self.regress_X_on_PC,regress_y_on_PC = self.regress_y_on_PC)
         if self.regress_PCs_out:
             regress_res = my_data_preprocessing.regress_out_PCs(X,y)
@@ -434,14 +440,24 @@ class run_simulations:
         
         end = time.perf_counter()
         
-        sims = do_analysis(self.data_gen,X_tilde,u2,s2,ldscores,ldsc_reg_weights,calc_mu_hat_2_fast = self.calc_mu_hat_2_fast)
-        sims_fixed = do_analysis(self.data_gen,X_tilde,u2,s2,ldscores,ldsc_reg_weights,intercept = 1,calc_mu_hat_2_fast = self.calc_mu_hat_2_fast)
+        sims = do_analysis(self.data_gen,X_tilde,u2,s2,ldscores,ldsc_reg_weights,calc_mu_hat_2_fast = self.calc_mu_hat_2_fast,num_blocks = self.num_blocks)
+        sims_fixed = do_analysis(self.data_gen,X_tilde,u2,s2,ldscores,ldsc_reg_weights,intercept = 1,calc_mu_hat_2_fast = self.calc_mu_hat_2_fast,num_blocks = self.num_blocks)
         
         start = time.perf_counter()
         
         h2_ldsc_reg,se_ldsc_reg,icpt_ldsc_reg,weights = sims.do_ldsc()
         h2_ldsc_fixed,se_ldsc_fixed,icpt_ldsc_fixed,weights_fixed = sims_fixed.do_ldsc()
         
+        
+        ### bias decomposition
+        S1 = np.ones(int(self.data_gen.n/2)) * self.data_gen.sigma_s
+        S2 = np.ones(int(self.data_gen.n/2)) * -self.data_gen.sigma_s
+        S = np.concat([S1,S2]).reshape(-1,1)
+        bias_term = -(self.data_gen.sigma_s**2) + ((1/self.data_gen.n) * ((X_tilde.T @ S)**2))
+        u2_new = u2 - bias_term
+        s2_new = u2_new.mean()
+        sims_new_fixed = do_analysis(self.data_gen,X_tilde,u2_new,s2_new,ldscores,ldsc_reg_weights,intercept = 1,calc_mu_hat_2_fast = self.calc_mu_hat_2_fast,num_blocks = self.num_blocks)
+        h2_ldsc_new_fixed,se_ldsc_new_fixed,icpt_ldsc_new_fixed,weights_new_fixed = sims_new_fixed.do_ldsc()
         
         end = time.perf_counter()
         
@@ -512,10 +528,12 @@ class run_simulations:
         res_dict['h2_ldsc_reg'] = h2_ldsc_reg
         res_dict['icpt_ldsc_reg'] = icpt_ldsc_reg
         res_dict['h2_ldsc_fixed'] = h2_ldsc_fixed
+        res_dict['h2_ldsc_new_fixed'] = h2_ldsc_new_fixed
         res_dict['h2_samp'] = h2_samp_fve
         res_dict['h2_gwash_sample_theoretical_se'] = GWASH_se_sample_theoretical
         res_dict['h2_ldsc_reg_jackknife_se'] = se_ldsc_reg # since it is an estimate of the variance component, I can just square the SE to get the variance apparently
         res_dict['h2_ldsc_fixed_jackknife_se'] = se_ldsc_fixed
+        res_dict['h2_ldsc_new_fixed_jackknife_se'] = se_ldsc_new_fixed
         logging.info('Finished simulation {i}'.format(i = i))
         return res_dict
         

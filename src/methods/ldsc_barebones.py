@@ -363,7 +363,7 @@ def ldsc_tot(cat, cat_cov):
 Main wrapper function of LDSC Regression.
 '''
 
-def do_ldsc_regression(y,x,M,N,w,intercept = None,num_weight_iteration = 2,twostep = None,return_step1_only = False):
+def do_ldsc_regression(y,x,M,N,w,intercept = None,num_weight_iteration = 2,twostep = None,return_step1_only = False,num_blocks = 200):
     
     x_orig = x
     M_tot = np.sum(M)
@@ -437,12 +437,12 @@ def do_ldsc_regression(y,x,M,N,w,intercept = None,num_weight_iteration = 2,twost
 
         '''
         ### DO STEP 1
-        #irwls_res = my_irwls(x1,yp1,initial_w1,w1,N1,M_tot,Nbar,ii = step1_ii,num_blocks = 200)
+        #irwls_res = my_irwls(x1,yp1,initial_w1,w1,N1,M_tot,Nbar,ii = step1_ii,num_blocks = num_blocks)
 
         update_func1 = lambda a: update(a, x1, w1, N1, M_tot, Nbar, ii=step1_ii)
 
-        #irwls_res = my_irwls(x1,yp1,initial_w1,update_func1,num_blocks = 200) # split this into two parts now, the weights and the irwls result
-        num_blocks = 200
+        #irwls_res = my_irwls(x1,yp1,initial_w1,update_func1,num_blocks = num_blocks) # split this into two parts now, the weights and the irwls result
+        num_blocks = num_blocks
         separators = None
         
         w1,wx1,wy1 = get_w_and_weighted_x_y(x1,yp1,initial_w1,update_func1,num_blocks = num_blocks,num_weight_iteration = num_weight_iteration)
@@ -479,7 +479,7 @@ def do_ldsc_regression(y,x,M,N,w,intercept = None,num_weight_iteration = 2,twost
     else:
         update_func = lambda a: update(a, x_tot, w, N, M_tot, Nbar, intercept)
         #jk_comb_res = format_single_jackknife(my_irwls(x, yp,initial_w, update_func, num_blocks= 200),intercept)
-        num_blocks = 200
+        num_blocks = num_blocks
         separators = None
         
         w1,wx1,wy1 = get_w_and_weighted_x_y(x, yp,initial_w, update_func, num_blocks= 200,num_weight_iteration = num_weight_iteration)

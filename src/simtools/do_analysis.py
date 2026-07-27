@@ -101,7 +101,7 @@ logging.basicConfig(level=logging.INFO)
 
 class do_analysis:
     def __init__(self,data_gen,X_tilde,u2,s2,ldscores,ldsc_reg_weights,
-                 intercept = None,return_step1_only = False,calc_mu_hat_2_fast = True,calc_mu_hat_3 = True,time_it = True,do_fast_GCTA = True):
+                 intercept = None,return_step1_only = False,calc_mu_hat_2_fast = True,calc_mu_hat_3 = True,time_it = True,do_fast_GCTA = True, num_blocks = 200):
         
         self.data_gen = data_gen
         self.u2 = u2
@@ -110,6 +110,7 @@ class do_analysis:
         self.ldsc_reg_weights = ldsc_reg_weights
         self.intercept = intercept
         self.X_tilde = X_tilde
+        self.num_blocks = num_blocks
         
         self.calc_mu_hat_2_fast = calc_mu_hat_2_fast # if True, take the mean of ldscores to calculate mu2hat
         self.calc_mu_hat_3 = calc_mu_hat_3
@@ -128,7 +129,8 @@ class do_analysis:
         ldsc_reg_weights = self.ldsc_reg_weights
         intercept = self.intercept
         return_step1_only = self.return_step1_only
-        ldsc_h2, ldsc_se,ldsc_intercept,weights = do_ldsc_regression(u2,ldscores,M,N_per_SNP,ldsc_reg_weights,intercept = intercept,return_step1_only = return_step1_only)
+        num_blocks = self.num_blocks
+        ldsc_h2, ldsc_se,ldsc_intercept,weights = do_ldsc_regression(u2,ldscores,M,N_per_SNP,ldsc_reg_weights,intercept = intercept,return_step1_only = return_step1_only,num_blocks = num_blocks)
         return ldsc_h2,ldsc_se,ldsc_intercept,weights
     
     

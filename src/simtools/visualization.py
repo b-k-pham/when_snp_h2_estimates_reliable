@@ -100,7 +100,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 class visualize:
-    def __init__(self,res_dict_raw,res_dict,xparam,h2_pop,types_to_plot = None, h2_reasonable_ylim = True,CI_level = 0.95,CI_mode = 'sd',plot_h2_samp = True,draw_whisker_mode = 'default',draw_outliers = False, publication = False,return_studies_plot_df = False,sd_constant = 1,plot_se_mode = 'all',legend_position = 'none',legend_title = element_blank()):
+    def __init__(self,res_dict_raw,res_dict,xparam,h2_pop,types_to_plot = None, h2_reasonable_ylim = True,CI_level = 0.95,CI_mode = 'sd',draw_mean = False,plot_h2_samp = True,draw_whisker_mode = 'default',draw_outliers = False, publication = False,return_studies_plot_df = False,sd_constant = 1,plot_se_mode = 'all',legend_position = 'none',log_se_prop = False,legend_title = element_blank()):
         self.res_dict_raw = res_dict_raw
         self.res_dict = res_dict
         self.xparam = xparam
@@ -110,6 +110,7 @@ class visualize:
         self.CI_level = CI_level
         self.CI_mode = CI_mode
         self.plot_h2_samp = plot_h2_samp
+        self.draw_mean = draw_mean # if in CI mode, draw mean? default is off because the bars are so small so it's hard to see.
         self.draw_whisker_mode = draw_whisker_mode
         self.draw_outliers = draw_outliers
         self.publication = publication # Should the figures be publication ready?
@@ -119,6 +120,7 @@ class visualize:
         self.legend_position = legend_position #legend position
         self.legend_title = legend_title
         self.return_studies_plot_df = return_studies_plot_df
+        self.log_se_prop = log_se_prop
         
         if self.publication:
             res_dict_raw_new = dict()
@@ -327,7 +329,10 @@ class visualize:
        
         #visualize(res_dict_raw,res_dict,'sigma_s',h2_pop = 0.2,plot_CIs = True,CI_level = 0.95, h2_reasonable_ylim = False,plot_h2_samp = False).plot_lineplot()+ scale_color_manual(["purple","green","blue","red",'#6C9CFF','#FB93C4'],breaks = ['h2_gcta','h2_gwash','h2_ols_reg','h2_ols_fixed','h2_ldsc_reg','h2_ldsc_fixed']) + scale_shape_identity() + guides(color = guide_legend(override_aes = {'shape': ['^','o',6,6,7,7]}) )
 
-        points = geom_point(position = position_dodge(width = 1),size = 6)
+        if self.draw_mean:
+            points = geom_point(position = position_dodge(width = 1),size = 6)
+        else:
+            points = geom_point(position = position_dodge(width = 1),size = 6,alpha = 0)
         
         h2_pop_line =  geom_hline(yintercept = self.h2_pop, linetype = 'dashed',color = 'red')
         borders = geom_vline(xintercept = [z +0.5 for z in range(n_xparam + 1)],color = 'white',size = 0.5)
@@ -487,7 +492,7 @@ class visualize:
         return p + mytheme
         
     def make_plot_seplot_prop(self):
-        def make_plot_ready_se_prop_long_df(res_dict_raw,CI_level,log = True,mode = None):
+        def make_plot_ready_se_prop_long_df(res_dict_raw,CI_level,log = False,mode = None):
             alpha_level = (1-CI_level)/2
             sim_std_dict = dict() # empirical std dataframe (this is the true value that the standard error estimates should go to)
             se_mean_dict = dict() # average SE dataframe
@@ -550,17 +555,22 @@ class visualize:
                 legend_text=element_text(size=20),
                 figure_size=(8, 7),
                 legend_position=self.legend_position)
-        se_quantile_long_df = make_plot_ready_se_prop_long_df(self.res_dict_raw_w_se,self.CI_level,mode = 'all')
+        se_quantile_long_df = make_plot_ready_se_prop_long_df(self.res_dict_raw_w_se,self.CI_level,log = self.log_se_prop,mode = 'all')
         buffer = 0.5
         lim_num = np.max([abs(z) for z in se_quantile_long_df['quantile_lower'].tolist()] + [z for z in se_quantile_long_df['quantile_upper'].tolist()]).item() + buffer
         param = self.xparam
         breaks_legend = ['GWASH','LDSC Fixed Intercept','LDSC Free Intercept'] #ordered h2s
         color_legend = ["green",'#FB93C4','red'] #color corresponding to order
         color_obj = scale_color_manual(color_legend,breaks = breaks_legend)
+        ylabel = r'$\frac{\hat{\mathrm{se}}}{\mathrm{se}_{\mathrm{MC}}}$'
+        target = 1 # prop se / empirical se should be 1 if ses are equal
+        if self.log_se_prop:
+            target = 0 # log prop se / empirical se should be 1 should be 0 if ses are equal
+            ylabel = r'$\log_{10}\left(\frac{\hat{\mathrm{se}}}{\mathrm{se}_{\mathrm{MC}}}\right)$'
         if self.CI_mode == 'CI':
-            p = ggplot(se_quantile_long_df,aes(x  = 'param',color = 'type')) + geom_errorbar(aes(ymin = 'CI_lower', ymax = 'CI_upper'),size = 2.5,position = position_dodge(width = 1)) + geom_hline(yintercept = 0,linetype = 'dashed',size = 1,color = 'blue') + xlab(param) +  ylab(r'$\log_{10}\left(\frac{\hat{\mathrm{se}}}{\mathrm{se}_{\mathrm{MC}}}\right)$') + color_obj #+ coord_flip(ylim=[-lim_num,lim_num])
+            p = ggplot(se_quantile_long_df,aes(x  = 'param',color = 'type')) + geom_errorbar(aes(ymin = 'CI_lower', ymax = 'CI_upper'),size = 2.5,position = position_dodge(width = 1)) + geom_hline(yintercept = target,linetype = 'dashed',size = 1,color = 'blue') + xlab(param) +  ylab(ylabel) + color_obj #+ coord_flip(ylim=[-lim_num,lim_num])
         else:
-            p = ggplot(se_quantile_long_df,aes(x  = 'param',color = 'type')) + geom_errorbar(aes(ymin = 'quantile_lower', ymax = 'quantile_upper'),size = 2.5,position = position_dodge(width = 1)) + geom_hline(yintercept = 0,linetype = 'dashed',size = 1,color = 'blue') + xlab(param) +  ylab(r'$\log_{10}\left(\frac{\hat{\mathrm{se}}}{\mathrm{se}_{\mathrm{MC}}}\right)$') + color_obj #+ coord_flip(ylim=[-lim_num,lim_num])
+            p = ggplot(se_quantile_long_df,aes(x  = 'param',color = 'type')) + geom_errorbar(aes(ymin = 'quantile_lower', ymax = 'quantile_upper'),size = 2.5,position = position_dodge(width = 1)) + geom_hline(yintercept = target,linetype = 'dashed',size = 1,color = 'blue') + xlab(param) +  ylab(ylabel) + color_obj #+ coord_flip(ylim=[-lim_num,lim_num])
         return p + mytheme
         
     def plot_studies_passed(self):
